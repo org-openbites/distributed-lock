@@ -304,6 +304,82 @@ public class GcsLockIT {
         assertFalse(doesLockExist());
     }
 
+    /**
+     * test GcsLock.lock()
+     */
+    @Test
+    public void testLock() throws InterruptedException {
+        GcsLock gcsLock = new GcsLock(configuration);
+
+        gcsLock.tryLock();
+
+        assertTrue(gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                gcsLock.lock();
+                assertTrue(gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+                LockSupport.parkNanos((long) 1E9);
+                gcsLock.unlock();
+
+                synchronized (gcsLock) {
+                    gcsLock.notifyAll();
+                }
+            }
+        }).start();
+
+        LockSupport.parkNanos((long) (configuration.getTimeToLiveInSeconds() * 1E9));
+
+        gcsLock.unlock();
+
+        synchronized (gcsLock) {
+            gcsLock.wait();
+        }
+
+        assertFalse(doesLockExist());
+    }
+
+    /**
+     * test GcsLock.lock() by multiple thread concurrently
+     */
+    @Test
+    public void testLockMultipleThreads() throws InterruptedException {
+        GcsLock gcsLock = new GcsLock(configuration);
+
+        gcsLock.tryLock();
+        assertTrue(gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+
+        final int       threads = 10;
+        ExecutorService service = Executors.newFixedThreadPool(threads);
+        List<Future>    futures = new ArrayList<>(threads);
+        Runnable runnableTask = () -> {
+            gcsLock.lock();
+            assertTrue(gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+            LockSupport.parkNanos((long) 1E9);
+            gcsLock.unlock();
+        };
+
+        for (int i = 0; i < threads; i++) {
+            futures.add(service.submit(runnableTask));
+        }
+
+        LockSupport.parkNanos((long) (configuration.getTimeToLiveInSeconds() * 1E9));
+        gcsLock.unlock();
+
+        try {
+            for (Future f : futures) {
+                f.get();
+            }
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            service.shutdown();
+        }
+
+        assertFalse(doesLockExist());
+    }
+
     private void deleteLock() {
         try {
             storage.delete(configuration.getGcsBucketName(), configuration.getGcsLockFilename());

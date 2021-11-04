@@ -8,7 +8,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -50,6 +52,8 @@ public class GcsLock implements DistributedLock, Serializable {
     private transient volatile Optional<Blob> acquired = Optional.empty();
     private transient volatile Thread         exclusiveOwnerThread;
 
+    private transient Queue<Thread> waitingThreads = new ConcurrentLinkedQueue<>();
+
     public GcsLock(GcsLockConfig lockConfig) {
         if (Objects.isNull(lockConfig)) {
             throw new NullPointerException("Null GcsLockConfig");
@@ -77,14 +81,19 @@ public class GcsLock implements DistributedLock, Serializable {
             return true;
         } catch (StorageException storageException) {
             if (storageException.getCode() == GCS_PRECONDITION_FAILED) {
-                lock.lock();
-                try {
-                    cleanupDeadLock.start();
-                } finally {
-                    lock.unlock();
-                }
+                cleanupDeadLock.start();
+                return false;
             }
-            return false;
+            throw new RuntimeException(storageException);
+        }
+    }
+
+    @Override
+    public void lock() {
+        while (!tryLock()) {
+            waitingThreads.add(Thread.currentThread());
+            LockSupport.park();
+            waitingThreads.remove(Thread.currentThread());
         }
     }
 
@@ -125,15 +134,20 @@ public class GcsLock implements DistributedLock, Serializable {
         Thread executingThread;
 
         void start() {
-            if (executingThread == null) {
-                Thread thread = new Thread(this);
-                thread.setName(String.format("%s-%s-%s",
-                                             this.getClass().getSimpleName(),
-                                             lockConfig.getGcsBucketName(),
-                                             lockConfig.getGcsLockFilename()));
-                thread.setDaemon(true);
-                thread.start();
-                executingThread = thread;
+            lock.lock();
+            try {
+                if (executingThread == null) {
+                    Thread thread = new Thread(this);
+                    thread.setName(String.format("%s-%s-%s",
+                                                 this.getClass().getSimpleName(),
+                                                 lockConfig.getGcsBucketName(),
+                                                 lockConfig.getGcsLockFilename()));
+                    thread.setDaemon(true);
+                    thread.start();
+                    executingThread = thread;
+                }
+            } finally {
+                lock.unlock();
             }
         }
 
@@ -208,6 +222,15 @@ public class GcsLock implements DistributedLock, Serializable {
             }
         }
 
+        @Override
+        void finish() {
+            super.finish();
+
+            Optional<Thread> thread = waitingThreads.stream().findAny();
+            thread.ifPresent(LockSupport::unpark);
+
+            if (waitingThreads.size() > 0) start();
+        }
     }
 
     private Map<String, String> computeMetaData() {
