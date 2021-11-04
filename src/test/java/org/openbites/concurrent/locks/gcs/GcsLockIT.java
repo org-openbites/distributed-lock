@@ -71,15 +71,15 @@ public class GcsLockIT {
                 verify(lifecycleListener, after((long) (configuration.getRefreshIntervalInSeconds() * 1000 * 4.5)).never())
                     .keepLockAliveException(exceptionArgumentCaptor.capture());
 
-                assertTrue(lockExists());
+                assertTrue(doesLockExist());
 
-                assertTrue(lockIsAlive());
+                assertTrue(isLockAlive());
             } finally {
                 gcsLock.unlock();
             }
         }
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
     }
 
     /**
@@ -108,7 +108,7 @@ public class GcsLockIT {
             }
         }
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
     }
 
     /**
@@ -128,7 +128,7 @@ public class GcsLockIT {
                 verify(lifecycleListener, after((long) (configuration.getRefreshIntervalInSeconds() * 1000 * 4.5)).never())
                     .keepLockAliveException(exceptionArgumentCaptor.capture());
 
-                assertTrue(lockIsAlive());
+                assertTrue(isLockAlive());
 
                 recreateLock();
 
@@ -144,12 +144,12 @@ public class GcsLockIT {
             }
         }
 
-        assertTrue(lockExists());
+        assertTrue(doesLockExist());
 
         // delete dangling lock
         deleteLock();
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
     }
 
     /**
@@ -159,13 +159,13 @@ public class GcsLockIT {
     public void testReuseLock() {
         GcsLock gcsLock = new GcsLock(configuration);
 
-        doCriticalWork(gcsLock);
+        executeCriticalSection(gcsLock);
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
 
-        doCriticalWork(gcsLock);
+        executeCriticalSection(gcsLock);
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
 
         verify(lifecycleListener, never()).cleanupDeadLockException(exceptionArgumentCaptor.capture());
     }
@@ -185,7 +185,7 @@ public class GcsLockIT {
             List<Future> futures = new ArrayList<>(threads);
 
             for (int i = 0; i < threads; i++) {
-                futures.add(service.submit(update(gcsLock)));
+                futures.add(service.submit(competeForLock(gcsLock)));
             }
 
             for (Future f : futures) {
@@ -199,7 +199,7 @@ public class GcsLockIT {
             service.shutdown();
         }
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
     }
 
     /**
@@ -257,7 +257,7 @@ public class GcsLockIT {
             }
         }
 
-        assertTrue(lockExists());
+        assertTrue(doesLockExist());
 
         deleteLock();
     }
@@ -278,7 +278,7 @@ public class GcsLockIT {
         verify(lifecycleListener, after((long) (configuration.getRefreshIntervalInSeconds() * 1000 * 1.5)).never())
             .cleanupDeadLockException(exceptionArgumentCaptor.capture());
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
     }
 
     /**
@@ -301,7 +301,7 @@ public class GcsLockIT {
         verify(lifecycleListener, after((long) (configuration.getRefreshIntervalInSeconds() * 1000 * 1.5)).never())
             .cleanupDeadLockException(exceptionArgumentCaptor.capture());
 
-        assertFalse(lockExists());
+        assertFalse(doesLockExist());
     }
 
     private void deleteLock() {
@@ -322,7 +322,7 @@ public class GcsLockIT {
         }
     }
 
-    private boolean lockExists() {
+    private boolean doesLockExist() {
         boolean ret = false;
         try {
             ret = Objects.nonNull(storage.get(configuration.getGcsBucketName(), configuration.getGcsLockFilename()));
@@ -361,7 +361,7 @@ public class GcsLockIT {
         }
     }
 
-    private void doCriticalWork(GcsLock gcsLock) {
+    private void executeCriticalSection(GcsLock gcsLock) {
         gcsLock.tryLock();
         assertTrue(gcsLock.isLocked());
         if (gcsLock.isLocked()) {
@@ -373,7 +373,7 @@ public class GcsLockIT {
         }
     }
 
-    private static Runnable update(GcsLock gcsLock) {
+    private static Runnable competeForLock(GcsLock gcsLock) {
         return () -> {
             while (!gcsLock.tryLock()) {
                 LockSupport.parkUntil(System.currentTimeMillis() + 1000);
@@ -385,7 +385,7 @@ public class GcsLockIT {
         };
     }
 
-    private boolean lockIsAlive() {
+    private boolean isLockAlive() {
         Blob                blob     = storage.get(configuration.getGcsBucketName(), configuration.getGcsLockFilename());
         Map<String, String> metaData = blob.getMetadata();
         String              lockTtl  = metaData.get(LOCK_TIME_TO_LIVE_EPOCH_MS);

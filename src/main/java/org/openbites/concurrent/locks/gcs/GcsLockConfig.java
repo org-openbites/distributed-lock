@@ -14,18 +14,30 @@ public class GcsLockConfig {
         return new Builder();
     }
 
+    /**
+     * @return The GCS bucket name where the lock object is stored
+     */
     public String getGcsBucketName() {
         return gcsBucketName;
     }
 
+    /**
+     * @return The name of lock object in the GCS bucket returned by getGcsBucketName()
+     */
     public String getGcsLockFilename() {
         return gcsLockFilename;
     }
 
+    /**
+     * @return The interval in seconds when the lock is refreshed by the lock owner or a cleanup is attempted by the other processes that couldn't obtain the lock.
+     */
     public Integer getRefreshIntervalInSeconds() {
         return refreshIntervalInSeconds;
     }
 
+    /**
+     * @return The length in seconds the lock's expiration is extended by the lock owner.
+     */
     public Integer getTimeToLiveInSeconds() {
         return timeToLiveInSeconds;
     }
