@@ -485,6 +485,50 @@ public class GcsLockIT {
         assertFalse(doesLockExist());
     }
 
+    @Test
+    public void testLockInterruptibly() throws InterruptedException {
+        GcsLock gcsLock1 = new GcsLock(configuration);
+        gcsLock1.lock();
+        assertTrue(gcsLock1.isLocked() && gcsLock1.isHeldByCurrentThread());
+
+        Thread gcsLock2Thread = new Thread(() -> {
+            GcsLock gcsLock2 = new GcsLock(configuration);
+            try {
+                gcsLock2.lockInterruptibly();
+            } catch (InterruptedException e) {
+                assertTrue(Objects.nonNull(e) );
+                assertFalse(gcsLock2.isLocked());
+                assertFalse(gcsLock2.isHeldByCurrentThread());
+
+                synchronized (gcsLock1) {
+                    gcsLock1.notifyAll();
+                }
+
+                return;
+            }
+
+            assertTrue(false);
+        });
+        gcsLock2Thread.start();
+
+        LockSupport.parkUntil(System.currentTimeMillis() + configuration.getRefreshIntervalInSeconds() * 1000);
+
+        gcsLock2Thread.interrupt();
+
+        synchronized (gcsLock1) {
+            gcsLock1.wait();
+        }
+
+        assertTrue(gcsLock1.isLocked() && gcsLock1.isHeldByCurrentThread());
+
+        assertFalse(gcsLock2Thread.isInterrupted());
+
+        gcsLock1.unlock();
+
+        assertFalse(doesLockExist());
+
+    }
+
     private void deleteLock() {
         try {
             storage.delete(configuration.getGcsBucketName(), configuration.getGcsLockFilename());

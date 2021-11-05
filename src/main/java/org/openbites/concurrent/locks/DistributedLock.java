@@ -8,10 +8,10 @@ import java.util.concurrent.locks.Lock;
  */
 public interface DistributedLock extends Lock {
 
-    default void lockInterruptibly() throws InterruptedException {
-        throw new UnsupportedOperationException();
-    }
-
+    /**
+     * Not supported by default
+     * @throws UnsupportedOperationException
+     */
     default Condition newCondition() {
         throw new UnsupportedOperationException();
     }
