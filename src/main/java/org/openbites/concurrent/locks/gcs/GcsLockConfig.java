@@ -22,7 +22,7 @@ public class GcsLockConfig {
     }
 
     /**
-     * @return The name of lock object in the GCS bucket returned by getGcsBucketName()
+     * @return The name of the lock object in the GCS bucket returned by getGcsBucketName()
      */
     public String getGcsLockFilename() {
         return gcsLockFilename;
@@ -57,6 +57,10 @@ public class GcsLockConfig {
         private Builder() {
         }
 
+        /**
+         * @param gcsBucketName: The GCS bucket name where the lock object is stored
+         * @return
+         */
         public GcsLockConfig.Builder setGcsBucketName(String gcsBucketName) {
             if (gcsBucketName == null) {
                 throw new NullPointerException("Null gcsBucketName");
@@ -65,6 +69,10 @@ public class GcsLockConfig {
             return this;
         }
 
+        /**
+         * @param gcsLockFilename: The name of the lock object in the GCS bucket returned by GcsLockConfig#getGcsBucketName()
+         * @return
+         */
         public GcsLockConfig.Builder setGcsLockFilename(String gcsLockFilename) {
             if (gcsLockFilename == null) {
                 throw new NullPointerException("Null gcsLockFilename");
@@ -73,6 +81,10 @@ public class GcsLockConfig {
             return this;
         }
 
+        /**
+         * @param refreshIntervalInSeconds: The interval in seconds when the lock is refreshed by the lock owner or a cleanup is attempted by the other processes that couldn't obtain the lock.
+         * @return
+         */
         public GcsLockConfig.Builder setRefreshIntervalInSeconds(Integer refreshIntervalInSeconds) {
             if (refreshIntervalInSeconds == null) {
                 throw new NullPointerException("Null refreshIntervalInSeconds");
@@ -81,6 +93,10 @@ public class GcsLockConfig {
             return this;
         }
 
+        /**
+         * @param iifeExtensionInSeconds: The length in seconds the lock's expiration is extended by the lock owner.
+         * @return
+         */
         public GcsLockConfig.Builder setLifeExtensionInSeconds(Integer iifeExtensionInSeconds) {
             if (iifeExtensionInSeconds == null) {
                 throw new NullPointerException("Null iifeExtensionInSeconds");

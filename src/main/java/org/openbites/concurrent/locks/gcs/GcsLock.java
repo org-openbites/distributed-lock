@@ -63,6 +63,19 @@ public class GcsLock implements DistributedLock, Serializable {
         intervalNanos = (long) (lockConfig.getRefreshIntervalInSeconds() * 1E9);
     }
 
+    /**
+     * Acquires the lock only if it is free at the time of invocation.
+     *
+     * <p>Acquires the lock if it is available and returns immediately
+     * with the value {@code true}.
+     * If the lock is not available then this method will return
+     * immediately with the value {@code false}.
+     *
+     * <p>Any exception would be returned as the parameter in the callback {@link org.openbites.concurrent.locks.gcs.GcsLockListener#acquireLockException(java.lang.Exception) GcsLockListener#acquireLockException(java.lang.Exception)}
+     *
+     * @return {@code true} if the lock was acquired and
+     *         {@code false} otherwise
+     */
     @Override
     public boolean tryLock() {
         try {
@@ -91,15 +104,35 @@ public class GcsLock implements DistributedLock, Serializable {
         }
     }
 
+    /**
+     * Acquires the lock.
+     *
+     * <p>If the lock is not available then the current thread becomes
+     * disabled for thread scheduling purposes and lies dormant until the
+     * lock has been acquired.
+     *
+     * <p>Any exception would be returned as the parameter in the callback {@link org.openbites.concurrent.locks.gcs.GcsLockListener#acquireLockException(java.lang.Exception) GcsLockListener#acquireLockException(java.lang.Exception)}
+     */
     @Override
     public void lock() {
-        while (!tryLock()) {
-            waitingThreads.add(Thread.currentThread());
-            LockSupport.park();
-            waitingThreads.remove(Thread.currentThread());
+        try {
+            while (!tryLock()) {
+                waitingThreads.add(Thread.currentThread());
+                LockSupport.park();
+                waitingThreads.remove(Thread.currentThread());
+            }
+        } catch (Exception exception) {
+            notifyAcquireLockListeners(exception);
         }
     }
 
+    /**
+     * Releases the lock.
+     *
+     * <p>While used in multi-thread environment only the thread that originally acquired the lock is able to release the lock.</p>
+     *
+     * <p>Any exception would be returned as the parameter in the callback {@link org.openbites.concurrent.locks.gcs.GcsLockListener#releaseLockException(java.lang.Exception) GcsLockListener#releaseLockException(java.lang.Exception)}</p>
+     */
     @Override
     public void unlock() {
         lock.lock();
@@ -111,23 +144,43 @@ public class GcsLock implements DistributedLock, Serializable {
                     deleteLock(blob);
                 });
             }
+        } catch (Exception exception) {
+            notifyReleaseLockListeners(exception);
         } finally {
             lock.unlock();
         }
     }
 
+    /**
+     *
+     * @return {@code true} if the lock has been acquired and
+     *         {@code false} otherwise
+     */
     public boolean isLocked() {
         return acquired.isPresent();
     }
 
+    /**
+     *
+     * @return {@code true} if the lock was acquired by the current thread
+     *         {@code false} otherwise
+     */
     public boolean isHeldByCurrentThread() {
         return exclusiveOwnerThread == Thread.currentThread();
     }
 
+    /**
+     * Add a lock listener as the callback for state change
+     * @param listener
+     */
     public void addLockListener(GcsLockListener listener) {
         lockListeners.add(listener);
     }
 
+    /**
+     * Remove a lock listener as the callback for state change
+     * @param listener
+     */
     public void removeLockListener(GcsLockListener listener) {
         lockListeners.remove(listener);
     }
@@ -249,7 +302,17 @@ public class GcsLock implements DistributedLock, Serializable {
     private void notifyAcquireLockListeners(Exception exception) {
         lockListeners.forEach(listener -> {
             try {
-                listener.acquiredLockException(exception);
+                listener.acquireLockException(exception);
+            } catch (Exception e) {
+                // Don't care if listener throws any exception
+            }
+        });
+    }
+
+    private void notifyReleaseLockListeners(Exception exception) {
+        lockListeners.forEach(listener -> {
+            try {
+                listener.releaseLockException(exception);
             } catch (Exception e) {
                 // Don't care if listener throws any exception
             }
