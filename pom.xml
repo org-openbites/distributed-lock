@@ -54,8 +54,8 @@
 
     <scm>
         <url>https://github.com/org-openbites/distributed-lock</url>
-        <connection>scm:git:git://github.com/org-openbites/distributed-lock.git</connection>
-        <developerConnection>scm:git:git://github.com/org-openbites/distributed-lock.git</developerConnection>
+        <connection>scm:git:git@github.com:org-openbites/distributed-lock.git</connection>
+        <developerConnection>scm:git:git@github.com:org-openbites/distributed-lock.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
