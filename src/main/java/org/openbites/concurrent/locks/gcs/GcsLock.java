@@ -79,12 +79,15 @@ public class GcsLock implements DistributedLock, Serializable {
             exclusiveOwnerThread = Thread.currentThread();
             keepLockAlive.start();
             return true;
-        } catch (StorageException storageException) {
-            if (storageException.getCode() == GCS_PRECONDITION_FAILED) {
+        } catch (Exception exception) {
+            if ((exception instanceof StorageException) && ((StorageException) exception).getCode() == GCS_PRECONDITION_FAILED) {
                 cleanupDeadLock.start();
                 return false;
             }
-            throw new RuntimeException(storageException);
+
+            notifyAcquireLockListeners(exception);
+
+            return false;
         }
     }
 
@@ -213,7 +216,7 @@ public class GcsLock implements DistributedLock, Serializable {
                     try {
                         deleteLock(blob);
                     } catch (Exception exception) {
-                        notifyCleanupDeakLockListeners(exception);
+                        notifyCleanupDeadLockListeners(exception);
                     } finally {
                         finish();
                         return;
@@ -243,20 +246,30 @@ public class GcsLock implements DistributedLock, Serializable {
         return metaData;
     }
 
-    private void notifyKeepLockAliveListeners(Exception ex) {
+    private void notifyAcquireLockListeners(Exception exception) {
         lockListeners.forEach(listener -> {
             try {
-                listener.keepLockAliveException(ex);
+                listener.acquiredLockException(exception);
             } catch (Exception e) {
                 // Don't care if listener throws any exception
             }
         });
     }
 
-    private void notifyCleanupDeakLockListeners(Exception ex) {
+    private void notifyKeepLockAliveListeners(Exception exception) {
         lockListeners.forEach(listener -> {
             try {
-                listener.cleanupDeadLockException(ex);
+                listener.keepLockAliveException(exception);
+            } catch (Exception e) {
+                // Don't care if listener throws any exception
+            }
+        });
+    }
+
+    private void notifyCleanupDeadLockListeners(Exception exception) {
+        lockListeners.forEach(listener -> {
+            try {
+                listener.cleanupDeadLockException(exception);
             } catch (Exception e) {
                 // Don't care if listener throws any exception
             }
