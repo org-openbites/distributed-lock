@@ -3,14 +3,15 @@ package org.openbites.concurrent.locks.gcs;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -52,7 +53,7 @@ public class GcsLock implements DistributedLock, Serializable {
     private transient volatile Optional<Blob> acquired = Optional.empty();
     private transient volatile Thread         exclusiveOwnerThread;
 
-    private transient Queue<Thread> waitingThreads = new ConcurrentLinkedQueue<>();
+    private transient Collection<Thread> waitingThreads = new ConcurrentLinkedQueue<>();
 
     public GcsLock(GcsLockConfig lockConfig) {
         if (Objects.isNull(lockConfig)) {
@@ -102,6 +103,73 @@ public class GcsLock implements DistributedLock, Serializable {
 
             return false;
         }
+    }
+
+    /**
+     * Acquires the lock if it is free within the given waiting time and the
+     * current thread has not been {@linkplain Thread#interrupt interrupted}.
+     *
+     * <p>If the lock is available this method returns immediately
+     * with the value {@code true}.
+     * If the lock is not available then
+     * the current thread becomes disabled for thread scheduling
+     * purposes and lies dormant until one of three things happens:
+     * <ul>
+     * <li>The lock is acquired by the current thread; or
+     * <li>Some other thread {@linkplain Thread#interrupt interrupts} the
+     * current thread, and interruption of lock acquisition is supported; or
+     * <li>The specified waiting time elapses
+     * </ul>
+     *
+     * <p>If the lock is acquired then the value {@code true} is returned.
+     *
+     * <p>If the current thread:
+     * <ul>
+     * <li>has its interrupted status set on entry to this method; or
+     * <li>is {@linkplain Thread#interrupt interrupted} while acquiring
+     * the lock, and interruption of lock acquisition is supported,
+     * </ul>
+     * then {@link InterruptedException} is thrown and the current thread's
+     * interrupted status is cleared.
+     *
+     * <p>If the specified waiting time elapses then the value {@code false}
+     * is returned.
+     * If the time is
+     * less than or equal to zero, the method will not wait at all.
+     *
+     * @param time the maximum time to wait for the lock
+     * @param timeUnit the time unit of the {@code time} argument
+     * @return {@code true} if the lock was acquired and {@code false}
+     *         if the waiting time elapsed before the lock was acquired
+     *
+     * @throws InterruptedException if the current thread is interrupted
+     *         while acquiring the lock (and interruption of lock
+     *         acquisition is supported)
+     */
+    @Override
+    public boolean tryLock(long time, TimeUnit timeUnit)  throws InterruptedException {
+        if (time <= 0) return false;
+
+        long deadline = TimeUnit.MILLISECONDS.convert(time, timeUnit) + System.currentTimeMillis();
+        try {
+            while (System.currentTimeMillis() <= deadline && !tryLock()) {
+                waitingThreads.add(Thread.currentThread());
+                LockSupport.parkUntil(deadline);
+                waitingThreads.remove(Thread.currentThread());
+
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException();
+                }
+            }
+        } catch (Exception exception) {
+            notifyAcquireLockListeners(exception);
+
+            if (exception instanceof InterruptedException) {
+                Thread.interrupted();
+                throw (InterruptedException) exception;
+            }
+        }
+        return isLocked() && isHeldByCurrentThread();
     }
 
     /**

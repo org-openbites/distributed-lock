@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -260,6 +261,8 @@ public class GcsLockIT {
         assertTrue(doesLockExist());
 
         deleteLock();
+
+        assertFalse(doesLockExist());
     }
 
     /**
@@ -376,6 +379,108 @@ public class GcsLockIT {
         } finally {
             service.shutdown();
         }
+
+        assertFalse(doesLockExist());
+    }
+
+    @Test
+    public void testTimedTryLockSuccess() throws InterruptedException {
+        GcsLock gcsLock1 = new GcsLock(configuration);
+        gcsLock1.lock();
+        assertTrue(gcsLock1.isLocked() && gcsLock1.isHeldByCurrentThread());
+
+        new Thread(() -> {
+            GcsLock gcsLock2 = new GcsLock(configuration);
+            try {
+                gcsLock2.tryLock(configuration.getRefreshIntervalInSeconds() * 2L, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                assertTrue(false);
+            }
+            assertTrue(gcsLock2.isLocked() && gcsLock2.isHeldByCurrentThread());
+
+            gcsLock2.unlock();
+
+            synchronized (gcsLock1) {
+                gcsLock1.notifyAll();
+            }
+        }).start();
+
+        LockSupport.parkUntil(System.currentTimeMillis() + configuration.getRefreshIntervalInSeconds() * 1000);
+
+        gcsLock1.unlock();
+
+        synchronized (gcsLock1) {
+            gcsLock1.wait();
+        }
+
+        assertFalse(doesLockExist());
+    }
+
+    @Test
+    public void testTimedTryLockTimeout() throws InterruptedException {
+        GcsLock gcsLock1 = new GcsLock(configuration);
+        gcsLock1.lock();
+        assertTrue(gcsLock1.isLocked() && gcsLock1.isHeldByCurrentThread());
+
+        new Thread(() -> {
+            GcsLock gcsLock2 = new GcsLock(configuration);
+            try {
+                gcsLock2.tryLock(configuration.getRefreshIntervalInSeconds(), TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                assertTrue(false);
+            }
+            assertFalse(gcsLock2.isLocked());
+            assertFalse(gcsLock2.isHeldByCurrentThread());
+        }).start();
+
+        LockSupport.parkUntil(System.currentTimeMillis() + configuration.getRefreshIntervalInSeconds() * 2 * 1000);
+
+        assertTrue(gcsLock1.isLocked() && gcsLock1.isHeldByCurrentThread());
+
+        gcsLock1.unlock();
+
+        assertFalse(doesLockExist());
+    }
+
+    @Test
+    public void testTimedTryLockInterrupted() throws InterruptedException {
+        GcsLock gcsLock1 = new GcsLock(configuration);
+        gcsLock1.lock();
+        assertTrue(gcsLock1.isLocked() && gcsLock1.isHeldByCurrentThread());
+
+        Thread gcsLock2Thread = new Thread(() -> {
+            GcsLock gcsLock2 = new GcsLock(configuration);
+            try {
+                gcsLock2.tryLock(configuration.getRefreshIntervalInSeconds() * 2, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                assertTrue(Objects.nonNull(e) );
+                assertFalse(gcsLock2.isLocked());
+                assertFalse(gcsLock2.isHeldByCurrentThread());
+
+                synchronized (gcsLock1) {
+                    gcsLock1.notifyAll();
+                }
+
+                return;
+            }
+
+            assertTrue(false);
+        });
+        gcsLock2Thread.start();
+
+        LockSupport.parkUntil(System.currentTimeMillis() + configuration.getRefreshIntervalInSeconds() * 1000);
+
+        gcsLock2Thread.interrupt();
+
+        synchronized (gcsLock1) {
+            gcsLock1.wait();
+        }
+
+        assertTrue(gcsLock1.isLocked() && gcsLock1.isHeldByCurrentThread());
+
+        assertFalse(gcsLock2Thread.isInterrupted());
+
+        gcsLock1.unlock();
 
         assertFalse(doesLockExist());
     }
