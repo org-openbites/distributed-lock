@@ -10,7 +10,7 @@ The `GcsLock` implementation is based on the strong consistency of Google Cloud 
 GcsLockConfig configuration = GcsLockConfig.newBuilder().setGcsBucketName("org-openbites-distributed-lock")
                                      .setGcsLockFilename("test-distributed-lock")
                                      .setRefreshIntervalInSeconds(10)
-                                     .setTimeToLiveInSeconds(60)
+                                     .setLifeExtensionInSeconds(60)
                                      .build();
 GcsLock gcsLock = new GcsLock(configuration);
 

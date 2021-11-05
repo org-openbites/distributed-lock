@@ -30,15 +30,15 @@ public class GcsLock implements DistributedLock, Serializable {
 
     private static final long serialVersionUID = 5184201915922962120L;
 
-    private static final String LOCK_FILE_CONTENT    = "_lock";
-    private static final String MIME_TYPE_TEXT_PLAIN = "text/plain";
-    private static final String CREATING_HOST        = "CREATING_HOST";
-    private static final String TTL_SECONDS          = "TTL_SECONDS";
-    private static final String REFRESH_SECONDS      = "REFRESH_SECONDS";
-    private static final String HOST_NAME            = getHostName();
+    private static final String LOCK_FILE_CONTENT     = "_lock";
+    private static final String MIME_TYPE_TEXT_PLAIN  = "text/plain";
+    private static final String CREATING_HOST         = "CREATING_HOST";
+    private static final String TTL_EXTENSION_SECONDS = "TTL_EXTENSION_SECONDS";
+    private static final String REFRESH_SECONDS       = "REFRESH_SECONDS";
+    private static final String HOST_NAME             = getHostName();
 
-    static final String LOCK_TIME_TO_LIVE_EPOCH_MS = "LOCK_TIME_TO_LIVE_EPOCH_MS";
-    static final int    GCS_PRECONDITION_FAILED    = 412;
+    static final String LOCK_TTL_EPOCH_MS       = "LOCK_TTL_EPOCH_MS";
+    static final int    GCS_PRECONDITION_FAILED = 412;
 
     private final GcsLockConfig        lockConfig;
     private final long                 intervalNanos;
@@ -204,7 +204,7 @@ public class GcsLock implements DistributedLock, Serializable {
 
                 Map<String, String> metaData = blob.getMetadata();
                 long ttl = Optional.ofNullable(metaData)
-                                   .map(metadata -> metaData.get(LOCK_TIME_TO_LIVE_EPOCH_MS))
+                                   .map(metadata -> metaData.get(LOCK_TTL_EPOCH_MS))
                                    .map(Long::valueOf)
                                    .orElse(Long.valueOf(Long.MAX_VALUE))
                                    .longValue();
@@ -234,11 +234,11 @@ public class GcsLock implements DistributedLock, Serializable {
     }
 
     private Map<String, String> computeMetaData() {
-        long                keepAliveToUnitMillis = System.currentTimeMillis() + lockConfig.getTimeToLiveInSeconds().intValue() * 1000L;
+        long                keepAliveToUnitMillis = System.currentTimeMillis() + lockConfig.getLifeExtensionInSeconds().intValue() * 1000L;
         Map<String, String> metaData              = new HashMap<>();
-        metaData.put(LOCK_TIME_TO_LIVE_EPOCH_MS, String.valueOf(keepAliveToUnitMillis));
+        metaData.put(LOCK_TTL_EPOCH_MS, String.valueOf(keepAliveToUnitMillis));
         metaData.put(CREATING_HOST, HOST_NAME);
-        metaData.put(TTL_SECONDS, String.valueOf(lockConfig.getTimeToLiveInSeconds()));
+        metaData.put(TTL_EXTENSION_SECONDS, String.valueOf(lockConfig.getLifeExtensionInSeconds()));
         metaData.put(REFRESH_SECONDS, String.valueOf(lockConfig.getRefreshIntervalInSeconds()));
         return metaData;
     }

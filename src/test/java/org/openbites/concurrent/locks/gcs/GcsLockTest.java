@@ -17,7 +17,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openbites.concurrent.locks.gcs.GcsLock.GCS_PRECONDITION_FAILED;
-import static org.openbites.concurrent.locks.gcs.GcsLock.LOCK_TIME_TO_LIVE_EPOCH_MS;
+import static org.openbites.concurrent.locks.gcs.GcsLock.LOCK_TTL_EPOCH_MS;
 
 import java.util.Map;
 
@@ -75,7 +75,7 @@ public class GcsLockTest {
                                      .setGcsBucketName("test-bucket")
                                      .setGcsLockFilename("test-lock")
                                      .setRefreshIntervalInSeconds(Integer.valueOf(10))
-                                     .setTimeToLiveInSeconds(Integer.valueOf(60))
+                                     .setLifeExtensionInSeconds(Integer.valueOf(60))
                                      .build();
     }
 
@@ -210,7 +210,7 @@ public class GcsLockTest {
     public void testCleanupExpiredLock() {
         when(storage.create(any(), (byte[]) any(), (Storage.BlobTargetOption) any())).thenThrow(storageException);
         when((storage.get(anyString(), anyString()))).thenReturn(blob);
-        when(metaData.get(LOCK_TIME_TO_LIVE_EPOCH_MS)).thenReturn(String.valueOf(System.currentTimeMillis() - 100));
+        when(metaData.get(LOCK_TTL_EPOCH_MS)).thenReturn(String.valueOf(System.currentTimeMillis() - 100));
 
         GcsLock gcsLock = new GcsLock(configuration);
         gcsLock.addLockListener(lifecycleListener);
@@ -234,7 +234,7 @@ public class GcsLockTest {
     public void testCleanupExpiredLockDeletionException() {
         when(storage.create(any(), (byte[]) any(), (Storage.BlobTargetOption) any())).thenThrow(storageException);
         when((storage.get(anyString(), anyString()))).thenReturn(blob);
-        when(metaData.get(LOCK_TIME_TO_LIVE_EPOCH_MS)).thenReturn(String.valueOf(System.currentTimeMillis() - 100));
+        when(metaData.get(LOCK_TTL_EPOCH_MS)).thenReturn(String.valueOf(System.currentTimeMillis() - 100));
         when(storage.delete((BlobId) any(), (BlobSourceOption) any(), any())).thenThrow(new RuntimeException(LOCK_DELETION_EXCEPTION));
 
         GcsLock gcsLock = new GcsLock(configuration);
@@ -260,7 +260,7 @@ public class GcsLockTest {
     public void testCleanupLongLivingLock() {
         when(storage.create(any(), (byte[]) any(), (Storage.BlobTargetOption) any())).thenThrow(storageException);
         when((storage.get(anyString(), anyString()))).thenReturn(blob);
-        when(metaData.get(LOCK_TIME_TO_LIVE_EPOCH_MS)).thenReturn(String.valueOf(Long.MAX_VALUE));
+        when(metaData.get(LOCK_TTL_EPOCH_MS)).thenReturn(String.valueOf(Long.MAX_VALUE));
 
         GcsLock gcsLock = new GcsLock(configuration);
         gcsLock.addLockListener(lifecycleListener);

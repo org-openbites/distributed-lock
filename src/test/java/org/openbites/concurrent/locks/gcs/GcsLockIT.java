@@ -10,7 +10,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-import static org.openbites.concurrent.locks.gcs.GcsLock.LOCK_TIME_TO_LIVE_EPOCH_MS;
+import static org.openbites.concurrent.locks.gcs.GcsLock.LOCK_TTL_EPOCH_MS;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +52,7 @@ public class GcsLockIT {
         configuration = GcsLockConfig.newBuilder().setGcsBucketName("org-openbites-distributed-lock")
                                      .setGcsLockFilename("test-distributed-lock")
                                      .setRefreshIntervalInSeconds(10)
-                                     .setTimeToLiveInSeconds(60)
+                                     .setLifeExtensionInSeconds(60)
                                      .build();
     }
 
@@ -263,7 +263,7 @@ public class GcsLockIT {
     }
 
     /**
-     * Test expired lock (GcsLock#LOCK_TIME_TO_LIVE_EPOCH_MS metadata is in the past) is removed
+     * Test expired lock (GcsLock#LOCK_TTL_EPOCH_MS metadata is in the past) is removed
      */
     @Test
     public void testCleanupExpiredLock() {
@@ -329,7 +329,7 @@ public class GcsLockIT {
             }
         }).start();
 
-        LockSupport.parkNanos((long) (configuration.getTimeToLiveInSeconds() * 1E9));
+        LockSupport.parkNanos((long) (configuration.getLifeExtensionInSeconds() * 1E9));
 
         gcsLock.unlock();
 
@@ -364,7 +364,7 @@ public class GcsLockIT {
             futures.add(service.submit(runnableTask));
         }
 
-        LockSupport.parkNanos((long) (configuration.getTimeToLiveInSeconds() * 1E9));
+        LockSupport.parkNanos((long) (configuration.getLifeExtensionInSeconds() * 1E9));
         gcsLock.unlock();
 
         try {
@@ -413,7 +413,7 @@ public class GcsLockIT {
         try {
             long                keepAliveToUnitMillis = System.currentTimeMillis() - 1000L;
             Map<String, String> metaData              = new HashMap<>();
-            metaData.put(LOCK_TIME_TO_LIVE_EPOCH_MS, String.valueOf(keepAliveToUnitMillis));
+            metaData.put(LOCK_TTL_EPOCH_MS, String.valueOf(keepAliveToUnitMillis));
 
             BlobId   blobId   = BlobId.of(configuration.getGcsBucketName(), configuration.getGcsLockFilename());
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setMetadata(metaData).build();
@@ -427,7 +427,7 @@ public class GcsLockIT {
         try {
             long                keepAliveToUnitMillis = Long.MAX_VALUE;
             Map<String, String> metaData              = new HashMap<>();
-            metaData.put(LOCK_TIME_TO_LIVE_EPOCH_MS, String.valueOf(keepAliveToUnitMillis));
+            metaData.put(LOCK_TTL_EPOCH_MS, String.valueOf(keepAliveToUnitMillis));
 
             BlobId   blobId   = BlobId.of(configuration.getGcsBucketName(), configuration.getGcsLockFilename());
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setMetadata(metaData).build();
@@ -464,7 +464,7 @@ public class GcsLockIT {
     private boolean isLockAlive() {
         Blob                blob     = storage.get(configuration.getGcsBucketName(), configuration.getGcsLockFilename());
         Map<String, String> metaData = blob.getMetadata();
-        String              lockTtl  = metaData.get(LOCK_TIME_TO_LIVE_EPOCH_MS);
+        String              lockTtl  = metaData.get(LOCK_TTL_EPOCH_MS);
         return Long.parseLong(lockTtl) >= System.currentTimeMillis();
     }
 }
