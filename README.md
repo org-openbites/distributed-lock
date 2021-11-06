@@ -15,6 +15,12 @@ The `GcsLock` implementation is based on the strong consistency of Google Cloud 
 ## Usage
 
 ```
+<dependency>
+  <groupId>org.openbites</groupId>
+  <artifactId>distributed-lock</artifactId>
+  <version>1.0.0</version>
+</dependency>
+
 GcsLockConfig configuration = GcsLockConfig.newBuilder().setGcsBucketName("org-openbites-distributed-lock")
                                      .setGcsLockFilename("test-distributed-lock")
                                      .setRefreshIntervalInSeconds(10)
