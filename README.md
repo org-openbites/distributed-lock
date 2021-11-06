@@ -2,7 +2,15 @@
 
 The `DistributedLock` interface is designed to provide an easy-to-use, easy-to-maintain, and cost-effective synchronization primitive to a set of globally distributed processes that run concurrently.  
 
-The `GcsLock` implementation is based on the strong consistency of Google Cloud Storage that offers the essential `Compare And Set` (CAS) semantics. Once obtained, the `GcsLock` object would extend its lifetime periodically based on the configuration used during lock construction. The processes that couldn't obtain the lock would run a cleanup logic in case the lock object is expired and could not be unlocked properly by the lock owner.  
+The `GcsLock` implementation is based on the strong consistency of Google Cloud Storage that offers the essential `Compare And Set` (CAS) semantics. Once obtained, the `GcsLock` object would extend its lifetime periodically based on the configuration used during lock construction. The processes that couldn't obtain the lock would run a cleanup logic in case the lock object is expired and could not be unlocked properly by the lock owner.
+
+# Production Ready Features
+* Keep the lock alive until unlock
+* Cleanup a deadlock in case of system failure
+* Listener for callback of erroneous situation 
+* Hardened against inter-process race conditions
+* Thread safe if used in multi-threaded environment
+* java.util.concurrent.locks.Lock interface and semantics compliant
 
 ## Usage
 
