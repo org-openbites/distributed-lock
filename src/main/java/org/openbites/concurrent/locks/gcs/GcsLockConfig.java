@@ -5,7 +5,7 @@ public class GcsLockConfig {
     private String  gcsBucketName;
     private String  gcsLockFilename;
     private Integer refreshIntervalInSeconds;
-    private Integer iifeExtensionInSeconds;
+    private Integer lifeExtensionInSeconds;
 
     private GcsLockConfig() {
     }
@@ -39,7 +39,7 @@ public class GcsLockConfig {
      * @return The length in seconds the lock's expiration is extended by the lock owner.
      */
     public Integer getLifeExtensionInSeconds() {
-        return iifeExtensionInSeconds;
+        return lifeExtensionInSeconds;
     }
 
     @Override
@@ -51,8 +51,8 @@ public class GcsLockConfig {
 
         private String  gcsBucketName;
         private String  gcsLockFilename;
-        private Integer refreshIntervalInSeconds;
-        private Integer iifeExtensionInSeconds;
+        private Integer refreshIntervalInSeconds = 10;
+        private Integer lifeExtensionInSeconds   = 60;
 
         private Builder() {
         }
@@ -101,27 +101,19 @@ public class GcsLockConfig {
             if (iifeExtensionInSeconds == null) {
                 throw new NullPointerException("Null iifeExtensionInSeconds");
             }
-            this.iifeExtensionInSeconds = iifeExtensionInSeconds;
+            this.lifeExtensionInSeconds = iifeExtensionInSeconds;
             return this;
         }
 
         public GcsLockConfig build() {
             if (this.gcsBucketName == null
-                || this.gcsLockFilename == null
-                || this.refreshIntervalInSeconds == null
-                || this.iifeExtensionInSeconds == null) {
+                || this.gcsLockFilename == null) {
                 StringBuilder missing = new StringBuilder();
                 if (this.gcsBucketName == null) {
                     missing.append(" gcsBucketName");
                 }
                 if (this.gcsLockFilename == null) {
                     missing.append(" gcsLockFilename");
-                }
-                if (this.refreshIntervalInSeconds == null) {
-                    missing.append(" refreshIntervalInSeconds");
-                }
-                if (this.iifeExtensionInSeconds == null) {
-                    missing.append(" iifeExtensionInSeconds");
                 }
                 throw new IllegalStateException("Missing required properties:" + missing);
             }
@@ -131,7 +123,7 @@ public class GcsLockConfig {
             configuration.gcsBucketName = this.gcsBucketName;
             configuration.gcsLockFilename = this.gcsLockFilename;
             configuration.refreshIntervalInSeconds = this.refreshIntervalInSeconds;
-            configuration.iifeExtensionInSeconds = this.iifeExtensionInSeconds;
+            configuration.lifeExtensionInSeconds = this.lifeExtensionInSeconds;
 
             return configuration;
         }
