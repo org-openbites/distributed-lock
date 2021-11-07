@@ -529,6 +529,15 @@ public class GcsLockIT {
 
     }
 
+    @Test
+    public void testReentrant() {
+        GcsLock gcsLock = new GcsLock(configuration);
+        gcsLock.lock();
+        assertTrue(gcsLock.tryLock());
+        gcsLock.unlock();
+        assertFalse(doesLockExist());
+    }
+
     private void deleteLock() {
         try {
             storage.delete(configuration.getGcsBucketName(), configuration.getGcsLockFilename());

@@ -79,6 +79,8 @@ public class GcsLock implements DistributedLock, Serializable {
      */
     @Override
     public boolean tryLock() {
+        if (isLocked() && isHeldByCurrentThread()) return true;
+
         try {
             Map<String, String> metadata = computeMetaData();
             BlobId              blobId   = BlobId.of(lockConfig.getGcsBucketName(), lockConfig.getGcsLockFilename());
