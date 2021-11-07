@@ -5,7 +5,7 @@
 
     <groupId>org.openbites</groupId>
     <artifactId>distributed-lock</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>${project.groupId}:${project.artifactId}</name>
@@ -55,7 +55,7 @@
         <url>https://github.com/org-openbites/distributed-lock</url>
         <connection>scm:git:git@github.com:org-openbites/distributed-lock.git</connection>
         <developerConnection>scm:git:git@github.com:org-openbites/distributed-lock.git</developerConnection>
-        <tag>distributed-lock-1.0.1</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <developers>
