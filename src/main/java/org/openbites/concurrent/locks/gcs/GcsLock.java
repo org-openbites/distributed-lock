@@ -391,8 +391,8 @@ public class GcsLock implements DistributedLock, Serializable {
                         notifyCleanupDeadLockListeners(exception);
                     } finally {
                         finish();
-                        return;
                     }
+                    return;
                 }
             }
         }
