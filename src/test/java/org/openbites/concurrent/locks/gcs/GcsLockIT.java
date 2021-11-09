@@ -318,17 +318,14 @@ public class GcsLockIT {
 
         assertTrue(gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                gcsLock.lock();
-                assertTrue(gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
-                LockSupport.parkNanos((long) 1E9);
-                gcsLock.unlock();
+        new Thread(() -> {
+            gcsLock.lock();
+            assertTrue(gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+            LockSupport.parkNanos((long) 1E9);
+            gcsLock.unlock();
 
-                synchronized (gcsLock) {
-                    gcsLock.notifyAll();
-                }
+            synchronized (gcsLock) {
+                gcsLock.notifyAll();
             }
         }).start();
 
