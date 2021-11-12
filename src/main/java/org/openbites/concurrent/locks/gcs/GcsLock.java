@@ -15,8 +15,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.openbites.concurrent.locks.DistributedLock;
-
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -26,6 +24,7 @@ import com.google.cloud.storage.Storage.BlobSourceOption;
 import com.google.cloud.storage.Storage.BlobTargetOption;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
+import org.openbites.concurrent.locks.DistributedLock;
 
 public class GcsLock implements DistributedLock, Serializable {
 
@@ -55,6 +54,8 @@ public class GcsLock implements DistributedLock, Serializable {
 
     private transient Collection<Thread> waitingThreads = new ConcurrentLinkedQueue<>();
 
+    private volatile int state;
+
     public GcsLock(GcsLockConfig lockConfig) {
         if (Objects.isNull(lockConfig)) {
             throw new NullPointerException("Null GcsLockConfig");
@@ -79,7 +80,13 @@ public class GcsLock implements DistributedLock, Serializable {
      */
     @Override
     public boolean tryLock() {
-        if (isLocked() && isHeldByCurrentThread()) return true;
+        if (isLocked() && isHeldByCurrentThread()) {
+            int c = state;
+            if (++c < 0) // overflow
+                throw new Error("Maximum lock count exceeded");
+            state = c;
+            return true;
+        }
 
         try {
             Map<String, String> metadata = computeMetaData();
@@ -93,6 +100,7 @@ public class GcsLock implements DistributedLock, Serializable {
 
             acquired = Optional.of(blob);
             exclusiveOwnerThread = Thread.currentThread();
+            state = 1;
             keepLockAlive.start();
             return true;
         } catch (Exception exception) {
@@ -260,9 +268,13 @@ public class GcsLock implements DistributedLock, Serializable {
         try {
             if (isHeldByCurrentThread()) {
                 acquired.ifPresent(blob -> {
-                    acquired = Optional.empty();
-                    exclusiveOwnerThread = null;
-                    deleteLock(blob);
+                    int c = state - 1;
+                    if (c == 0) {
+                        acquired = Optional.empty();
+                        exclusiveOwnerThread = null;
+                        deleteLock(blob);
+                    }
+                    state = c;
                 });
             }
         } catch (Exception exception) {
