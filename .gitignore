@@ -34,3 +34,6 @@ target
 /.project
 /.settings/
 /distributed-lock.iml
+
+scrape/
+.codetogether.ignore
