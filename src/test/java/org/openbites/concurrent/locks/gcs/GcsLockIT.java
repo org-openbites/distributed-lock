@@ -529,11 +529,21 @@ public class GcsLockIT {
     public void testReentrant() {
         GcsLock gcsLock = new GcsLock(configuration);
         gcsLock.lock();
-        assertTrue(gcsLock.tryLock());
-        gcsLock.unlock();
-        assertTrue(doesLockExist());
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+        lockReentrantlyInDeepCallStack(gcsLock, 20);
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
         gcsLock.unlock();
         assertFalse(doesLockExist());
+    }
+
+    private void lockReentrantlyInDeepCallStack(GcsLock gcsLock, int callDepth) {
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+        if (callDepth-- == 0) return;
+        assertTrue(gcsLock.tryLock());
+        lockReentrantlyInDeepCallStack(gcsLock, callDepth);
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+        gcsLock.unlock();
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
     }
 
     private void deleteLock() {
