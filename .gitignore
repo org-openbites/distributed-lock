@@ -30,3 +30,7 @@ target
 
 # sdkman files
 .sdkmanrc
+/.classpath
+/.project
+/.settings/
+/distributed-lock.iml
