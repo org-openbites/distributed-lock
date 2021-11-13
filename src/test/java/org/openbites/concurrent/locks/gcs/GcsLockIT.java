@@ -1,17 +1,5 @@
 package org.openbites.concurrent.locks.gcs;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentCaptor.forClass;
-import static org.mockito.Mockito.after;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
-import static org.openbites.concurrent.locks.gcs.GcsLock.LOCK_TTL_EPOCH_MS;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,16 +14,27 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentCaptor.forClass;
+import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+import static org.openbites.concurrent.locks.gcs.GcsLock.LOCK_TTL_EPOCH_MS;
 
 public class GcsLockIT {
 
@@ -530,9 +529,21 @@ public class GcsLockIT {
     public void testReentrant() {
         GcsLock gcsLock = new GcsLock(configuration);
         gcsLock.lock();
-        assertTrue(gcsLock.tryLock());
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+        lockReentrantlyInDeepCallStack(gcsLock, 20);
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
         gcsLock.unlock();
         assertFalse(doesLockExist());
+    }
+
+    private void lockReentrantlyInDeepCallStack(GcsLock gcsLock, int callDepth) {
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+        if (callDepth-- == 0) return;
+        assertTrue(gcsLock.tryLock());
+        lockReentrantlyInDeepCallStack(gcsLock, callDepth);
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
+        gcsLock.unlock();
+        assertTrue(doesLockExist() && gcsLock.isLocked() && gcsLock.isHeldByCurrentThread());
     }
 
     private void deleteLock() {
