@@ -2,7 +2,7 @@
 
 The `DistributedLock` interface is designed to provide an easy-to-use, easy-to-maintain, and cost-effective synchronization primitive to a set of globally distributed processes that run concurrently.  
 
-The `GcsLock` implementation is based on the strong consistency of Google Cloud Storage that offers the essential `Compare And Set` (CAS) semantics. Once obtained, the `GcsLock` object would extend its lifetime periodically based on the configuration used during lock construction. The processes that couldn't obtain the lock would run a cleanup logic in case the lock object is expired and could not be unlocked properly by the lock owner.
+The `GcsLock` implementation is based on the strong consistency of Google Cloud Storage that offers the essential `Compare And Set` (CAS) semantics. Once obtained, the `GcsLock` object would extend its lifetime periodically based on the configuration provided while the lock object is constructed. The processes that couldn't obtain the lock would run a cleanup logic in case the lock object is expired and could not be unlocked properly by the lock owner.
 
 # Production Ready Features
 * Automatically keep the lock alive until unlock
@@ -17,8 +17,8 @@ The `GcsLock` implementation is based on the strong consistency of Google Cloud 
 ```
 <dependency>
   <groupId>org.openbites</groupId>
-  <artifactId>distributed-lock</artifactId>
-  <version>1.0.0</version>
+  <artifactId>distributed-lock-core</artifactId>
+  <version>2.0.0</version>
 </dependency>
 
 GcsLockConfig configuration = GcsLockConfig.newBuilder().setGcsBucketName("org-openbites-distributed-lock")
