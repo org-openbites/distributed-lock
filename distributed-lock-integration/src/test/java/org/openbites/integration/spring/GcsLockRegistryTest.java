@@ -76,10 +76,7 @@ public class GcsLockRegistryTest {
 	}
 
 	/**
-	 * test the scenario when exception is encountered during the lock keep alive process after being successfully acquired.
-	 *
-	 * the exception could be due to deletion or recreation of the lock file by some other process when this process failed to keep it alive in a
-	 * timely fashion
+	 * test GcsLockRegistry.obtain
 	 */
 	@Test
 	public void testObtain() {
