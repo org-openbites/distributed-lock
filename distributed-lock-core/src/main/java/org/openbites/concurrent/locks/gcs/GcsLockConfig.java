@@ -47,7 +47,7 @@ public class GcsLockConfig {
         return String.format("[gcsBucketName=%s, gcsLockFilename=%s]", gcsBucketName, gcsLockFilename);
     }
 
-    static final class Builder {
+    public static final class Builder {
 
         private String  gcsBucketName;
         private String  gcsLockFilename;

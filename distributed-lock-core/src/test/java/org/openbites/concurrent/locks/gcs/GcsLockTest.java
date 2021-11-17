@@ -1,6 +1,5 @@
 package org.openbites.concurrent.locks.gcs;
 
-
 import java.util.Map;
 
 import com.google.cloud.storage.Blob;

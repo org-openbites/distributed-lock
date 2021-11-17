@@ -14,6 +14,7 @@ The `GcsLock` implementation is based on the strong consistency of Google Cloud 
 
 ## Usage
 
+### distributed-lock-core
 ```
 <dependency>
   <groupId>org.openbites</groupId>
@@ -39,7 +40,34 @@ if (gcsLock.tryLock()) {
   }                                     
 }
 ```
+### distributed-lock-integration
+#### spring-integration
+```
+<dependency>
+  <groupId>org.openbites</groupId>
+  <artifactId>distributed-lock-integration</artifactId>
+  <version>2.0.0</version>
+</dependency>
 
+GcsLockRegistry gcsLockRegistry = new GcsLockRegistry();
+GcsLockConfig configuration = GcsLockConfig.newBuilder().setGcsBucketName("org-openbites-distributed-lock")
+                                     .setGcsLockFilename("test-distributed-lock")
+                                     .setRefreshIntervalInSeconds(10)
+                                     .setLifeExtensionInSeconds(60)
+                                     .build();
+Lock gcsLock = gcsLockRegistry.obtain(configuration);
+
+GcsLockListener lockListener = ...;    // optional
+((GcsLock) gcsLock).addLockListener(lockListener); // optional
+
+if (gcsLock.tryLock()) {
+  try {
+    // critical setion that is meant to be executed once by a set of globally distributed processes that run concurrently
+  } finally {
+     gcsLock.unlock();
+  }                                     
+}
+```
 ## Notes
 * Due to the rate limitation as well as latency of invoking the Google GCS API the `GcsLock` object is not meant to be used in a High Throughput High Available applications.
 * The `GcsLock` object is thread-safe.  However, it is not recommended being used as the inter-thread synchronization primitive in the same JVM.
