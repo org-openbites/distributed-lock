@@ -28,12 +28,14 @@ target
 # IntelliJ project files
 .idea
 
+# Eclise project files
+*.iml
+/.settings/
+
 # sdkman files
 .sdkmanrc
 /.classpath
 /.project
-/.settings/
-/distributed-lock.iml
 
 scrape/
 .codetogether.ignore
