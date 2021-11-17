@@ -19,7 +19,7 @@ The `GcsLock` implementation is based on the strong consistency of Google Cloud 
 <dependency>
   <groupId>org.openbites</groupId>
   <artifactId>distributed-lock-core</artifactId>
-  <version>2.0.0</version>
+  <version>2.0.1</version>
 </dependency>
 
 GcsLockConfig configuration = GcsLockConfig.newBuilder().setGcsBucketName("org-openbites-distributed-lock")
@@ -46,7 +46,7 @@ if (gcsLock.tryLock()) {
 <dependency>
   <groupId>org.openbites</groupId>
   <artifactId>distributed-lock-integration</artifactId>
-  <version>2.0.0</version>
+  <version>2.0.1</version>
 </dependency>
 
 GcsLockRegistry gcsLockRegistry = new GcsLockRegistry();
