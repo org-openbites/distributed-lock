@@ -77,4 +77,3 @@ if (gcsLock.tryLock()) {
 * GCS Strong Consistency: https://cloud.google.com/storage/docs/consistency
 * GCS Rate Limit: https://cloud.google.com/storage/docs/request-rate
 * Cost Estimator: https://cloud.google.com/products/calculator
-
